@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    services:
+      db:
+        image: postgres:18
+        env:
+          POSTGRES_USER: flowapprove
+          POSTGRES_PASSWORD: flowapprove
+          POSTGRES_DB: flowapprove
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U flowapprove -d flowapprove"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: just setup
+      - run: cd api && npx prisma migrate deploy
+      - run: just lint
+      - run: npm test
+      - run: npm run build

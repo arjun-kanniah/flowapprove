@@ -1,0 +1,13 @@
+{
+  "name": "flowapprove",
+  "private": true,
+  "workspaces": [
+    "api",
+    "web"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces",
+    "build": "npm run build --workspaces"
+  }
+}

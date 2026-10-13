@@ -1,0 +1,5 @@
+# Toolchain for FlowApprove. Run `mise install` once; versions are pinned for everyone.
+[tools]
+node = "24"
+just = "1.58"
+terraform = "1.15"

@@ -1,0 +1,21 @@
+# Local development services only. Credentials here are for a throwaway local database.
+# Port 5433 so it can run next to other projects' Postgres on 5432.
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: flowapprove
+      POSTGRES_PASSWORD: flowapprove
+      POSTGRES_DB: flowapprove
+    ports:
+      - "5433:5432"
+    volumes:
+      - flowapprove-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowapprove -d flowapprove"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  flowapprove-db:
