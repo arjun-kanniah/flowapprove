@@ -18,8 +18,11 @@ setup:
 db:
     docker compose up -d --wait db
 
-# Apply migrations to the local database
-migrate: db
+# Apply migrations to the database (starts the local one first, unless in CI)
+migrate:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [ -n "${CI:-}" ] || docker compose up -d --wait db
     cd api && npx prisma migrate deploy
 
 # Create a migration after changing api/prisma/schema.prisma, e.g. `just migration add_x`
