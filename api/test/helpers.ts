@@ -38,9 +38,9 @@ export async function setUp(): Promise<TestContext> {
     APPROVAL_FINANCE_THRESHOLD: '1000',
   })
   const db = createDb(config.DATABASE_URL)
-  const users = await seedDemo(db, { financeThresholdCents: config.financeThresholdCents })
-  const events: RequestEvent[] = []
   const storage = new LocalStorage(mkdtempSync(join(tmpdir(), 'flowapprove-test-')))
+  const users = await seedDemo(db, { financeThresholdCents: config.financeThresholdCents }, storage)
+  const events: RequestEvent[] = []
   const app = buildApp({ config, db, storage, publish: (e) => events.push(e) })
   await app.ready()
 

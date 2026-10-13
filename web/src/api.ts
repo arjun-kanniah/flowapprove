@@ -44,6 +44,14 @@ export type HistoryEntry = {
   createdAt: string
 }
 
+export type DecisionRecord = {
+  step: 'manager' | 'finance'
+  action: 'approve' | 'reject' | 'request_changes'
+  comment: string
+  actor: Person
+  createdAt: string
+}
+
 export type RequestDetail = RequestSummary & {
   description: string
   manager: Person | null
@@ -55,6 +63,9 @@ export type RequestDetail = RequestSummary & {
   actions: Action[]
   canEdit: boolean
   waitingOn: 'manager' | 'finance' | null
+  decisions: DecisionRecord[]
+  financeRequired: boolean
+  financeThresholdCents: number
 }
 
 export type RequestInput = {

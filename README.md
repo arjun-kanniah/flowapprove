@@ -61,6 +61,8 @@ just dev-web          # terminal 2: web app on http://localhost:5174
 `just seed` loads six demo personas (a director, a manager, two engineers, finance and an admin)
 and requests in every state. Sign in as Rita to raise a request and as Mo, her manager, in
 another browser to approve it, and watch both pages update live.
+[`demo/`](demo/) has fictional vendor quotes to attach, including a few that deliberately don't
+match their request.
 
 `just check` runs what CI runs. API tests use their own `flowapprove_test` database, so they
 never touch the data you're working with.

@@ -53,6 +53,20 @@ describe('seeded inboxes', () => {
     expect(await titles('rita', 'inbox')).toEqual([])
   })
 
+  it('attaches each seeded request’s quote, except where the manager asked for one', async () => {
+    const all = (await ctx.as('ada').get('/api/requests?view=all')).body
+    const files = async (title: string) => {
+      const id = all.find((r: { title: string }) => r.title === title).id
+      return (await ctx.as('ada').get(`/api/requests/${id}`)).body.attachments.map(
+        (a: { filename: string }) => a.filename,
+      )
+    }
+    expect(await files('Monitors for the design review room')).toEqual([
+      'northwind_displays_quote.pdf',
+    ])
+    expect(await files('Standing desk')).toEqual([])
+  })
+
   it('limits the all-requests view to finance (no drafts) and admins', async () => {
     expect((await ctx.as('rita').get('/api/requests?view=all')).status).toBe(403)
     expect(await titles('fay', 'all')).not.toContain('Mechanical keyboard')
@@ -96,6 +110,7 @@ describe('the approval path', () => {
     const forMo = (await ctx.as('mo').get(`/api/requests/${id}`)).body
     expect(forMo.actions).toEqual(['approve', 'reject', 'request_changes'])
     expect(forMo.waitingOn).toBe('manager')
+    expect(forMo).toMatchObject({ financeRequired: false, financeThresholdCents: 100_000 })
     const forRita = (await ctx.as('rita').get(`/api/requests/${id}`)).body
     expect(forRita.actions).toEqual(['cancel'])
   })

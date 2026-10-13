@@ -1,13 +1,24 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, type Health, type Me, type View } from './api'
+import { api, type Health, type Me, type Role, type Status, type View } from './api'
 import { type LiveMessage, useLiveUpdates } from './live'
 import { NewRequest } from './RequestForm'
 import { RequestDetail } from './RequestDetail'
 import { RequestList } from './RequestList'
 import { go, href, useRoute } from './router'
+import { LogoMark } from './Logo'
 import { SignIn } from './SignIn'
+import { ThemeToggle } from './theme'
 
 type Toast = { id: number; text: string; requestId: string }
+
+const OPEN: Status[] = ['draft', 'pending_manager', 'pending_finance', 'changes_requested']
+
+const ROLE_LABELS: Record<Role, string> = {
+  requester: 'Requester',
+  manager: 'Manager',
+  finance: 'Finance',
+  admin: 'Admin',
+}
 
 const ACTION_WORDS: Record<string, string> = {
   submit: 'submitted',
@@ -23,6 +34,7 @@ export function App() {
   const [me, setMe] = useState<Me | null | undefined>(undefined) // undefined: still checking
   const [refreshKey, setRefreshKey] = useState(0)
   const [inboxCount, setInboxCount] = useState(0)
+  const [openCount, setOpenCount] = useState(0) // the user's requests not yet decided
   const [toasts, setToasts] = useState<Toast[]>([])
   const route = useRoute()
 
@@ -37,7 +49,9 @@ export function App() {
   }, [loadMe])
 
   useEffect(() => {
-    if (me) api.list('inbox').then((r) => setInboxCount(r.length), () => {})
+    if (!me) return
+    api.list('inbox').then((r) => setInboxCount(r.length), () => {})
+    api.list('mine').then((r) => setOpenCount(r.filter((x) => OPEN.includes(x.status)).length), () => {})
   }, [me, refreshKey])
 
   const onLive = useCallback(
@@ -70,45 +84,68 @@ export function App() {
   }
 
   const canSeeAll = me.roles.includes('finance') || me.roles.includes('admin')
-  const navItems: { view: View; label: string; count?: number }[] = [
-    { view: 'inbox', label: 'Waiting for me', count: inboxCount },
-    { view: 'mine', label: 'My requests' },
-    ...(canSeeAll ? [{ view: 'all' as View, label: 'All requests' }] : []),
-  ]
   const activeView = route.page === 'list' ? route.view : null
+  const roleLabel = ROLE_LABELS[me.roles.find((r) => r !== 'requester') ?? 'requester']
+  const navLink = (view: View, label: string, count?: number) => (
+    <a
+      href={href.list(view)}
+      className={activeView === view ? 'active' : ''}
+      aria-current={activeView === view ? 'page' : undefined}
+    >
+      <span>{label}</span>
+      {!!count && <span className={view === 'inbox' ? 'count' : 'count count-quiet'}>{count}</span>}
+    </a>
+  )
 
   return (
     <div className="shell">
       <header className="topbar">
-        <a className="logo" href={href.list('inbox')}>
-          FlowApprove
+        <a className="topbar-logo" href={href.list('inbox')} aria-label="FlowApprove home">
+          <LogoMark size={30} />
+          {health?.demo && <span className="demo-pill">Demo · resets nightly</span>}
         </a>
-        {health?.demo && <span className="demo-pill">Public demo · resets nightly</span>}
+        <span className="topbar-title">FlowApprove</span>
         <div className="who">
-          <span>
-            {me.name} <span className="muted">· {me.roles.filter((r) => r !== 'requester').join(', ') || 'requester'}</span>
+          <span className="who-text">
+            <strong>{me.name}</strong>
+            <span className="muted small">{roleLabel}</span>
           </span>
-          <button type="button" className="ghost-button" onClick={() => void signOut()}>
-            {health?.auth === 'demo' ? 'Switch persona' : 'Sign out'}
+          <ThemeToggle />
+          <button
+            type="button"
+            className="ghost-button switch"
+            onClick={() => void signOut()}
+            title={health?.auth === 'demo' ? 'Sign in as someone else' : 'Sign out'}
+          >
+            <span aria-hidden>⇄</span>
+            <span className="switch-label">
+              {health?.auth === 'demo' ? 'Switch persona' : 'Sign out'}
+            </span>
           </button>
         </div>
       </header>
-      <nav className="nav" aria-label="Requests">
-        {navItems.map((item) => (
-          <a key={item.view} href={href.list(item.view)} className={activeView === item.view ? 'active' : ''}>
-            {item.label}
-            {!!item.count && <span className="count">{item.count}</span>}
-          </a>
-        ))}
-        <a href={href.new()} className={route.page === 'new' ? 'active' : ''}>
+      <aside className="sidebar">
+        <a className="button new-request" href={href.new()}>
           + New request
         </a>
-      </nav>
+        <nav className="nav" aria-label="Requests">
+          <p className="nav-group">Approvals</p>
+          {navLink('inbox', 'Waiting for me', inboxCount)}
+          <p className="nav-group">Requests</p>
+          {navLink('mine', 'My requests', openCount)}
+          {canSeeAll && navLink('all', 'All requests')}
+        </nav>
+      </aside>
       <main className="content">
         {route.page === 'list' && <RequestList view={route.view} refreshKey={refreshKey} />}
         {route.page === 'new' && <NewRequest onCreated={(id) => go(href.request(id))} />}
         {route.page === 'request' && <RequestDetail id={route.id} refreshKey={refreshKey} />}
       </main>
+      {route.page !== 'new' && (
+        <a className="fab" href={href.new()} aria-label="New request">
+          +
+        </a>
+      )}
       <div className="toasts" aria-live="polite">
         {toasts.map((t) => (
           <a key={t.id} className="toast" href={href.request(t.requestId)}>

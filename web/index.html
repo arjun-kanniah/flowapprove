@@ -1,9 +1,17 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>FlowApprove</title>
+    <script>
+      // Apply the saved theme before the first paint, so the page never flashes the wrong one
+      try {
+        const saved = localStorage.getItem('flowapprove.theme')
+        if (saved === 'light' || saved === 'dark') document.documentElement.dataset.theme = saved
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

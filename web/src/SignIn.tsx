@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Persona } from './api'
+import { LogoMark } from './Logo'
+import { ThemeToggle } from './theme'
 
 const ROLE_HINTS: Record<string, string> = {
   manager: 'approves their team’s requests',
@@ -33,7 +35,13 @@ export function SignIn({ onSignedIn, demo }: { onSignedIn: () => void; demo: boo
 
   return (
     <main className="sign-in">
-      <h1>FlowApprove</h1>
+      <div className="sign-in-head">
+        <h1 className="sign-in-title">
+          <LogoMark size={40} />
+          FlowApprove
+        </h1>
+        <ThemeToggle />
+      </div>
       <p className="lead">
         Purchase requests that go to the right approvers, with live updates and a full audit
         trail.

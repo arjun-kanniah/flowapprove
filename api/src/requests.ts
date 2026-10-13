@@ -257,9 +257,17 @@ export function actionsFor(
   request: PurchaseRequest,
   user: User,
   policy: Policy,
-): { actions: Action[]; canEdit: boolean; waitingOn: 'manager' | 'finance' | null } {
+): {
+  actions: Action[]
+  canEdit: boolean
+  waitingOn: 'manager' | 'finance' | null
+  financeRequired: boolean
+  financeThresholdCents: number
+} {
   return {
     actions: allowedActions(stateOf(request), actorOf(user), policy),
+    financeRequired: request.amountCents >= policy.financeThresholdCents,
+    financeThresholdCents: policy.financeThresholdCents,
     canEdit:
       request.requesterId === user.id &&
       (request.status === 'draft' || request.status === 'changes_requested'),

@@ -35,9 +35,7 @@ export function RequestList({ view, refreshKey }: { view: View; refreshKey: numb
     <section className="page">
       <header className="page-head">
         <h1>{TITLES[view]}</h1>
-        <a className="button" href={href.new()}>
-          + New request
-        </a>
+        {rows && <span className="muted">{rows.length} {rows.length === 1 ? 'request' : 'requests'}</span>}
       </header>
       {error && <p className="notice notice-error">{error}</p>}
       {rows && rows.length === 0 && <p className="muted empty">{EMPTY[view]}</p>}
@@ -55,18 +53,18 @@ export function RequestList({ view, refreshKey }: { view: View; refreshKey: numb
           <tbody>
             {rows.map((r) => (
               <tr key={r.id}>
-                <td>
+                <td className="col-title">
                   <a href={href.request(r.id)}>{r.title}</a>
                   <span className="muted sub">
                     {r.vendor} · {r.category}
                   </span>
                 </td>
-                {view !== 'mine' && <td>{r.requester.name}</td>}
-                <td className="num">{money(r.amountCents, r.currency)}</td>
-                <td>
+                {view !== 'mine' && <td className="col-requester">{r.requester.name}</td>}
+                <td className="num col-amount">{money(r.amountCents, r.currency)}</td>
+                <td className="col-status">
                   <StatusBadge status={r.status} />
                 </td>
-                <td className="muted">{when(r.updatedAt)}</td>
+                <td className="muted col-updated">{when(r.updatedAt)}</td>
               </tr>
             ))}
           </tbody>
