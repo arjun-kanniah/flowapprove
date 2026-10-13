@@ -29,6 +29,10 @@ migrate:
 migration name: db
     cd api && npx prisma migrate dev --name {{name}}
 
+# Replace the local data with the demo personas and requests
+seed: migrate
+    cd api && npx tsx src/seed-cli.ts
+
 # Stop local services (data is kept in a Docker volume)
 down:
     docker compose down

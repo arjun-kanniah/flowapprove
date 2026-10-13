@@ -4,8 +4,9 @@ Purchase-request approvals: a requester submits a request with a vendor quote, i
 manager and, above a threshold, to finance; everyone sees changes live, gets email, and every
 action lands in an append-only audit log. An AI check compares the quote with the request.
 
-**Status: in development.** Built so far: the approval rules with tests, the data model, and
-the project skeleton.
+**Status: in development.** Working locally: sign-in as demo personas, raising and editing
+requests, PDF quotes, the full approval path with separation of duties, live updates and the
+audit trail. Next: email notifications, the AI quote check, and the Azure deployment.
 
 ## Stack
 
@@ -57,7 +58,12 @@ just dev-api          # terminal 1: API on http://localhost:8080
 just dev-web          # terminal 2: web app on http://localhost:5174
 ```
 
-`just check` runs what CI runs.
+`just seed` loads six demo personas (a director, a manager, two engineers, finance and an admin)
+and requests in every state. Sign in as Rita to raise a request and as Mo, her manager, in
+another browser to approve it, and watch both pages update live.
+
+`just check` runs what CI runs. API tests use their own `flowapprove_test` database, so they
+never touch the data you're working with.
 
 ## License
 

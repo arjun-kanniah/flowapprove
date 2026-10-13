@@ -3,8 +3,12 @@
     "target": "ES2024",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "lib": ["ES2024"],
-    "types": ["node"],
+    "lib": [
+      "ES2024"
+    ],
+    "types": [
+      "node"
+    ],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
@@ -12,8 +16,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "verbatimModuleSyntax": true,
-    "outDir": "dist",
-    "rootDir": "src"
+    "outDir": "dist"
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "test"
+  ]
 }

@@ -1,16 +1,257 @@
-import Fastify, { type FastifyInstance } from 'fastify'
+import cookie from '@fastify/cookie'
+import multipart from '@fastify/multipart'
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify'
+import { z } from 'zod'
+import {
+  addAttachment,
+  MAX_ATTACHMENT_BYTES,
+  readAttachment,
+  removeAttachment,
+} from './attachments.js'
 import type { Config } from './config.js'
 import type { Db } from './db.js'
+import { badRequest, HttpError, notFound, unauthorized } from './errors.js'
+import type { User } from './generated/prisma/client.js'
+import {
+  act,
+  actionsFor,
+  canView,
+  createRequest,
+  listWhere,
+  type Publish,
+  updateRequest,
+} from './requests.js'
+import type { Storage } from './storage.js'
+import { ACTIONS, type Policy } from './workflow.js'
 
 export const VERSION = '0.1.0'
+export const SESSION_COOKIE = 'fa_session'
+const SESSION_DAYS = 7
+
+declare module 'fastify' {
+  interface FastifyRequest {
+    user: User | null
+  }
+}
+
+const RequestBody = z.object({
+  title: z.string().trim().min(3).max(120),
+  description: z.string().trim().max(4000).default(''),
+  vendor: z.string().trim().min(2).max(120),
+  category: z.string().trim().min(2).max(60),
+  /** Dollars, up to two decimals. */
+  amount: z.number().positive().max(1_000_000).multipleOf(0.01),
+})
+
+const ActionBody = z.object({
+  action: z.enum(ACTIONS),
+  comment: z.string().trim().max(2000).default(''),
+})
+
+const ListQuery = z.object({ view: z.enum(['mine', 'inbox', 'all']).default('mine') })
+const IdParams = z.object({ id: z.uuid() })
+
+function toInput(body: z.infer<typeof RequestBody>) {
+  const { amount, ...rest } = body
+  return { ...rest, amountCents: Math.round(amount * 100) }
+}
+
+function person(user: Pick<User, 'id' | 'name'> | null) {
+  return user ? { id: user.id, name: user.name } : null
+}
+
+export interface AppDeps {
+  config: Config
+  db: Db
+  storage: Storage
+  /** Sends live updates; main.ts connects it to Socket.IO once the server exists. */
+  publish?: Publish
+}
 
 /** The HTTP app, built separately from main.ts so tests can call it without a network port. */
-export function buildApp(config: Config, db: Db): FastifyInstance {
+export function buildApp({ config, db, storage, publish = () => {} }: AppDeps): FastifyInstance {
   const app = Fastify({ logger: config.NODE_ENV !== 'test' })
+  const policy: Policy = { financeThresholdCents: config.financeThresholdCents }
+  const secure = config.NODE_ENV === 'production'
+
+  app.register(cookie, { secret: config.SESSION_SECRET })
+  app.register(multipart, { limits: { fileSize: MAX_ATTACHMENT_BYTES, files: 1 } })
+  app.decorateRequest('user', null)
+
+  // Who is signed in: a signed session cookie that holds the user's id
+  app.addHook('preHandler', async (request) => {
+    const raw = request.cookies[SESSION_COOKIE]
+    if (!raw) return
+    const unsigned = request.unsignCookie(raw)
+    if (!unsigned.valid || !unsigned.value) return
+    request.user = await db.user.findUnique({ where: { id: unsigned.value } })
+  })
+
+  function signedIn(request: FastifyRequest): User {
+    if (!request.user) throw unauthorized()
+    return request.user
+  }
+
+  function startSession(reply: FastifyReply, user: User) {
+    reply.setCookie(SESSION_COOKIE, user.id, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure,
+      signed: true,
+      maxAge: SESSION_DAYS * 24 * 3600,
+    })
+  }
+
+  app.setErrorHandler((error: Error & { statusCode?: number }, request, reply) => {
+    if (error instanceof HttpError) {
+      return reply.status(error.statusCode).send({ detail: error.message })
+    }
+    if (error instanceof z.ZodError) {
+      const issue = error.issues[0]
+      const where = issue?.path.join('.')
+      return reply.status(400).send({ detail: where ? `${where}: ${issue?.message}` : issue?.message })
+    }
+    if (error.statusCode && error.statusCode < 500) {
+      return reply.status(error.statusCode).send({ detail: error.message })
+    }
+    request.log.error(error)
+    return reply.status(500).send({ detail: 'Something went wrong.' })
+  })
 
   app.get('/api/health', async () => {
     await db.$queryRaw`SELECT 1`
-    return { status: 'ok', version: VERSION, demo: config.DEMO_MODE }
+    return { status: 'ok', version: VERSION, demo: config.DEMO_MODE, auth: config.AUTH_MODE }
+  })
+
+  // --- Signing in -----------------------------------------------------------------------
+
+  app.get('/api/auth/personas', async () => {
+    if (config.AUTH_MODE !== 'demo') throw notFound()
+    const personas = await db.user.findMany({
+      where: { isDemo: true },
+      include: { manager: { select: { id: true, name: true } } },
+      orderBy: { name: 'asc' },
+    })
+    return personas.map((p) => ({
+      id: p.id,
+      name: p.name,
+      email: p.email,
+      roles: p.roles,
+      manager: person(p.manager),
+    }))
+  })
+
+  app.post('/api/auth/demo', async (request, reply) => {
+    if (config.AUTH_MODE !== 'demo') throw notFound()
+    const { userId } = z.object({ userId: z.uuid() }).parse(request.body)
+    const user = await db.user.findFirst({ where: { id: userId, isDemo: true } })
+    if (!user) throw notFound('No such persona')
+    startSession(reply, user)
+    return { id: user.id, name: user.name }
+  })
+
+  app.post('/api/auth/logout', async (_request, reply) => {
+    reply.clearCookie(SESSION_COOKIE, { path: '/' })
+    return { ok: true }
+  })
+
+  app.get('/api/me', async (request) => {
+    const user = signedIn(request)
+    const manager = user.managerId
+      ? await db.user.findUnique({ where: { id: user.managerId } })
+      : null
+    return { id: user.id, name: user.name, email: user.email, roles: user.roles, manager: person(manager) }
+  })
+
+  // --- Requests -------------------------------------------------------------------------
+
+  app.get('/api/requests', async (request) => {
+    const user = signedIn(request)
+    const { view } = ListQuery.parse(request.query)
+    const rows = await db.purchaseRequest.findMany({
+      where: listWhere(view, user),
+      include: { requester: { select: { id: true, name: true } } },
+      orderBy: { updatedAt: 'desc' },
+      take: 200,
+    })
+    return rows.map(({ requester, ...r }) => ({ ...r, requester: person(requester) }))
+  })
+
+  app.post('/api/requests', async (request, reply) => {
+    const user = signedIn(request)
+    const created = await createRequest(db, user, toInput(RequestBody.parse(request.body)), publish)
+    return reply.status(201).send(created)
+  })
+
+  app.get('/api/requests/:id', async (request) => {
+    const user = signedIn(request)
+    const { id } = IdParams.parse(request.params)
+    const found = await db.purchaseRequest.findUnique({
+      where: { id },
+      include: {
+        requester: { select: { id: true, name: true } },
+        manager: { select: { id: true, name: true } },
+        attachments: { orderBy: { createdAt: 'asc' } },
+        decisions: { include: { actor: { select: { id: true, name: true } } }, orderBy: { createdAt: 'asc' } },
+        auditEvents: { include: { actor: { select: { id: true, name: true } } }, orderBy: { id: 'asc' } },
+      },
+    })
+    if (!found || !canView(found, user)) throw notFound('Request not found')
+    const { auditEvents, ...rest } = found
+    return {
+      ...rest,
+      // BigInt ids don't serialize to JSON; the order is what matters
+      history: auditEvents.map(({ id: _id, actor, ...event }) => ({ ...event, actor: person(actor) })),
+      ...actionsFor(found, user, policy),
+    }
+  })
+
+  app.patch('/api/requests/:id', async (request) => {
+    const user = signedIn(request)
+    const { id } = IdParams.parse(request.params)
+    const body = RequestBody.partial().parse(request.body)
+    const { amount, ...rest } = body
+    const input = amount === undefined ? rest : { ...rest, amountCents: Math.round(amount * 100) }
+    return updateRequest(db, user, id, input, publish)
+  })
+
+  app.post('/api/requests/:id/actions', async (request) => {
+    const user = signedIn(request)
+    const { id } = IdParams.parse(request.params)
+    const { action, comment } = ActionBody.parse(request.body)
+    return act(db, user, id, action, comment, policy, publish)
+  })
+
+  // --- Attachments ----------------------------------------------------------------------
+
+  app.post('/api/requests/:id/attachments', async (request, reply) => {
+    const user = signedIn(request)
+    const { id } = IdParams.parse(request.params)
+    const file = await request.file()
+    if (!file) throw badRequest('Choose a file to upload.')
+    const data = await file.toBuffer() // throws a 413 past the size limit
+    const created = await addAttachment(db, storage, user, id, { filename: file.filename, data }, publish)
+    return reply.status(201).send(created)
+  })
+
+  app.get('/api/attachments/:id', async (request, reply) => {
+    const user = signedIn(request)
+    const { id } = IdParams.parse(request.params)
+    const { attachment, data } = await readAttachment(db, storage, user, id)
+    return reply
+      .header('content-type', 'application/pdf')
+      .header('content-disposition', `inline; filename="${attachment.filename}"`)
+      .header('x-content-type-options', 'nosniff')
+      .header('content-security-policy', "default-src 'none'; sandbox")
+      .send(data)
+  })
+
+  app.delete('/api/attachments/:id', async (request, reply) => {
+    const user = signedIn(request)
+    const { id } = IdParams.parse(request.params)
+    await removeAttachment(db, storage, user, id, publish)
+    return reply.status(204).send()
   })
 
   return app
