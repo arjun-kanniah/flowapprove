@@ -16,7 +16,6 @@ export interface EntraSignIn {
   redeem(params: {
     redirectUri: string
     code: string
-    state: string
     nonce: string
     codeVerifier: string
   }): Promise<EntraProfile>
@@ -58,11 +57,13 @@ export function createEntraSignIn(config: Config): EntraSignIn | null {
         prompt: 'select_account',
       }),
 
-    async redeem({ redirectUri, code, state, nonce, codeVerifier }) {
-      // Passing the nonce makes MSAL reject an ID token that wasn't issued for this sign-in
+    async redeem({ redirectUri, code, nonce, codeVerifier }) {
+      // Passing the nonce makes MSAL reject an ID token that wasn't issued for this sign-in.
+      // The state isn't passed: the app has already matched it to the browser's cookie, and
+      // MSAL would try to decode it as a state of its own making.
       const result = await msal.acquireTokenByCode(
         { scopes: SCOPES, redirectUri, code, codeVerifier },
-        { code, state, nonce },
+        { code, nonce },
       )
       // Only the ID token's claims are needed; don't keep tokens for every visitor in memory
       if (result.account) await msal.getTokenCache().removeAccount(result.account)

@@ -265,7 +265,6 @@ export function buildApp({
       profile = await entra.redeem({
         redirectUri: entraRedirectUri,
         code: query.code,
-        state: query.state,
         nonce: pending.data.nonce,
         codeVerifier: pending.data.verifier,
       })
