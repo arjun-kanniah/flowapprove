@@ -5,6 +5,7 @@ import { loadConfig } from '../src/config.js'
 import { createDb, type Db } from '../src/db.js'
 import type { User } from '../src/generated/prisma/client.js'
 import type { RequestEvent } from '../src/requests.js'
+import type { QuoteChecker } from '../src/quote/check.js'
 import { seedDemo } from '../src/seed.js'
 import { LocalStorage } from '../src/storage.js'
 import { mkdtempSync } from 'node:fs'
@@ -31,7 +32,7 @@ interface Response {
   body: any // eslint-disable-line @typescript-eslint/no-explicit-any -- test responses
 }
 
-export async function setUp(): Promise<TestContext> {
+export async function setUp(options: { quoteChecker?: QuoteChecker } = {}): Promise<TestContext> {
   const config = loadConfig({
     NODE_ENV: 'test',
     DATABASE_URL: inject('testDatabaseUrl'),
@@ -41,7 +42,13 @@ export async function setUp(): Promise<TestContext> {
   const storage = new LocalStorage(mkdtempSync(join(tmpdir(), 'flowapprove-test-')))
   const users = await seedDemo(db, { financeThresholdCents: config.financeThresholdCents }, storage)
   const events: RequestEvent[] = []
-  const app = buildApp({ config, db, storage, publish: (e) => events.push(e) })
+  const app = buildApp({
+    config,
+    db,
+    storage,
+    publish: (e) => events.push(e),
+    quoteChecker: options.quoteChecker ?? null,
+  })
   await app.ready()
 
   const cookies: Record<string, string> = {}

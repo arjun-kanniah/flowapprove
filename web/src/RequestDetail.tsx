@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { type Action, api, type RequestDetail as Detail } from './api'
 import { ACTION_LABELS, describeEvent, money, when } from './format'
 import { type ProgressStep, progress } from './progress'
+import { QuoteCheckPanel } from './QuoteCheckPanel'
 import { RequestForm } from './RequestForm'
 import { StatusBadge } from './StatusBadge'
 
@@ -14,6 +15,7 @@ const BUTTON_CLASS: Record<Action, string> = {
   cancel: 'ghost-button',
 }
 const HISTORY_PREVIEW = 4
+const VERDICT_WORDS = { match: 'matches', mismatch: 'doesn’t match', unclear: 'unclear' }
 
 const STEP_NOTES: Record<ProgressStep['state'], string> = {
   done: 'Done',
@@ -68,6 +70,7 @@ export function RequestDetail({ id, refreshKey }: { id: string; refreshKey: numb
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
   const [allHistory, setAllHistory] = useState(false)
+  const [checking, setChecking] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const load = useCallback(() => {
@@ -293,6 +296,17 @@ export function RequestDetail({ id, refreshKey }: { id: string; refreshKey: numb
                 ))}
               </ul>
             )}
+            {request.quoteCheckAvailable && request.attachments.length > 0 && (
+              <QuoteCheckPanel
+                check={request.quoteChecks[0]}
+                canRun={request.canEdit || deciding}
+                busy={checking}
+                onRun={() => {
+                  setChecking(true)
+                  void run(() => api.checkQuote(id)).finally(() => setChecking(false))
+                }}
+              />
+            )}
           </article>
 
           {ownActions.length > 0 && (
@@ -379,6 +393,12 @@ export function RequestDetail({ id, refreshKey }: { id: string; refreshKey: numb
                 <strong>{entry.actor?.name ?? 'System'}</strong>{' '}
                 {describeEvent(entry.action, entry.fromStatus, entry.toStatus)}
                 {entry.details.filename && <span className="muted"> ({entry.details.filename})</span>}
+                {entry.details.verdict && (
+                  <span className={`muted verdict-word-${entry.details.verdict}`}>
+                    {' '}
+                    · {VERDICT_WORDS[entry.details.verdict]}
+                  </span>
+                )}
                 {entry.details.changed && (
                   <span className="muted"> ({Object.keys(entry.details.changed).join(', ')})</span>
                 )}

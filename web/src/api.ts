@@ -40,7 +40,12 @@ export type HistoryEntry = {
   actor: Person | null
   fromStatus: Status | null
   toStatus: Status | null
-  details: { comment?: string; filename?: string; changed?: Record<string, { from: unknown; to: unknown }> }
+  details: {
+    comment?: string
+    filename?: string
+    verdict?: 'match' | 'mismatch' | 'unclear'
+    changed?: Record<string, { from: unknown; to: unknown }>
+  }
   createdAt: string
 }
 
@@ -49,6 +54,26 @@ export type DecisionRecord = {
   action: 'approve' | 'reject' | 'request_changes'
   comment: string
   actor: Person
+  createdAt: string
+}
+
+export type QuoteFinding = {
+  field: 'vendor' | 'total' | 'currency' | 'validity' | 'items'
+  status: 'ok' | 'mismatch' | 'unclear'
+  request: string
+  quote: string
+  note: string
+}
+
+export type QuoteCheck = {
+  id: string
+  status: 'running' | 'done' | 'failed'
+  verdict: 'match' | 'mismatch' | 'unclear' | null
+  findings: QuoteFinding[]
+  provider: string
+  model: string
+  filename: string
+  error: string | null
   createdAt: string
 }
 
@@ -66,6 +91,8 @@ export type RequestDetail = RequestSummary & {
   decisions: DecisionRecord[]
   financeRequired: boolean
   financeThresholdCents: number
+  quoteChecks: QuoteCheck[]
+  quoteCheckAvailable: boolean
 }
 
 export type RequestInput = {
@@ -119,4 +146,5 @@ export const api = {
     return call<Attachment>(`/api/requests/${id}/attachments`, { method: 'POST', body: form })
   },
   removeAttachment: (id: string) => call<void>(`/api/attachments/${id}`, { method: 'DELETE' }),
+  checkQuote: (id: string) => call<QuoteCheck>(`/api/requests/${id}/quote-check`, { method: 'POST' }),
 }

@@ -21,6 +21,8 @@ import {
   type Publish,
   updateRequest,
 } from './requests.js'
+import { checkTarget, type QuoteChecker, runQuoteCheck } from './quote/check.js'
+import { HourlyLimit } from './ratelimit.js'
 import type { Storage } from './storage.js'
 import { ACTIONS, type Policy } from './workflow.js'
 
@@ -66,13 +68,22 @@ export interface AppDeps {
   storage: Storage
   /** Sends live updates; main.ts connects it to Socket.IO once the server exists. */
   publish?: Publish
+  /** Reads quotes with a model; null when no model is configured. */
+  quoteChecker?: QuoteChecker | null
 }
 
 /** The HTTP app, built separately from main.ts so tests can call it without a network port. */
-export function buildApp({ config, db, storage, publish = () => {} }: AppDeps): FastifyInstance {
+export function buildApp({
+  config,
+  db,
+  storage,
+  publish = () => {},
+  quoteChecker = null,
+}: AppDeps): FastifyInstance {
   const app = Fastify({ logger: config.NODE_ENV !== 'test' })
   const policy: Policy = { financeThresholdCents: config.financeThresholdCents }
   const secure = config.NODE_ENV === 'production'
+  const checkLimit = new HourlyLimit(config.QUOTE_CHECKS_PER_HOUR)
 
   app.register(cookie, { secret: config.SESSION_SECRET })
   app.register(multipart, { limits: { fileSize: MAX_ATTACHMENT_BYTES, files: 1 } })
@@ -195,12 +206,22 @@ export function buildApp({ config, db, storage, publish = () => {} }: AppDeps): 
         attachments: { orderBy: { createdAt: 'asc' } },
         decisions: { include: { actor: { select: { id: true, name: true } } }, orderBy: { createdAt: 'asc' } },
         auditEvents: { include: { actor: { select: { id: true, name: true } } }, orderBy: { id: 'asc' } },
+        aiChecks: {
+          include: { attachment: { select: { filename: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        },
       },
     })
     if (!found || !canView(found, user)) throw notFound('Request not found')
-    const { auditEvents, ...rest } = found
+    const { auditEvents, aiChecks, ...rest } = found
     return {
       ...rest,
+      quoteChecks: aiChecks.map(({ attachment, ...check }) => ({
+        ...check,
+        filename: attachment.filename,
+      })),
+      quoteCheckAvailable: quoteChecker !== null,
       // BigInt ids don't serialize to JSON; the order is what matters
       history: auditEvents.map(({ id: _id, actor, ...event }) => ({ ...event, actor: person(actor) })),
       ...actionsFor(found, user, policy),
@@ -220,7 +241,34 @@ export function buildApp({ config, db, storage, publish = () => {} }: AppDeps): 
     const user = signedIn(request)
     const { id } = IdParams.parse(request.params)
     const { action, comment } = ActionBody.parse(request.body)
-    return act(db, user, id, action, comment, policy, publish)
+    const result = await act(db, user, id, action, comment, policy, publish)
+    if (action === 'submit') startCheckOnSubmit(user, id)
+    return result
+  })
+
+  /** A submitted quote is checked in the background, so submitting stays instant. */
+  function startCheckOnSubmit(user: User, id: string) {
+    if (!quoteChecker || !checkLimit.take(user.id)) return
+    void db.attachment
+      .findFirst({ where: { requestId: id }, orderBy: { createdAt: 'desc' } })
+      .then((latest) =>
+        latest
+          ? runQuoteCheck(db, storage, quoteChecker, id, latest.id, publish, user)
+          : null,
+      )
+      .catch((error: unknown) => app.log.error({ err: error, requestId: id }, 'quote check failed'))
+  }
+
+  app.post('/api/requests/:id/quote-check', async (request, reply) => {
+    const user = signedIn(request)
+    const { id } = IdParams.parse(request.params)
+    if (!quoteChecker) throw new HttpError(503, 'The quote check isn’t set up here.')
+    const { attachment } = await checkTarget(db, user, id)
+    if (!checkLimit.take(user.id)) {
+      throw new HttpError(429, `You can run ${config.QUOTE_CHECKS_PER_HOUR} checks an hour. Try again later.`)
+    }
+    const check = await runQuoteCheck(db, storage, quoteChecker, id, attachment.id, publish, user)
+    return reply.status(201).send(check)
   })
 
   // --- Attachments ----------------------------------------------------------------------

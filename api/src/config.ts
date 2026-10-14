@@ -20,6 +20,13 @@ const Env = z.object({
   SESSION_SECRET: z.string().min(32).optional(),
   /** Where attachments go in development. */
   STORAGE_DIR: z.string().default('.data/attachments'),
+  /** The model that reads quotes, as provider/model; the check is off without its key. */
+  QUOTE_CHECK_MODEL: z.string().default('anthropic/claude-haiku-5-5'),
+  /** Checks each person may run in an hour (automatic checks on submit included). */
+  QUOTE_CHECKS_PER_HOUR: z.coerce.number().int().positive().default(10),
+  ANTHROPIC_API_KEY: z.string().default(''),
+  OPENAI_API_KEY: z.string().default(''),
+  GEMINI_API_KEY: z.string().default(''),
 })
 
 export type Config = z.infer<typeof Env> & { SESSION_SECRET: string; financeThresholdCents: number }

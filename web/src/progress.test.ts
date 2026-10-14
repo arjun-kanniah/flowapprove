@@ -28,6 +28,8 @@ function request(patch: Partial<RequestDetail>): RequestDetail {
     decisions: [],
     financeRequired: false,
     financeThresholdCents: 100_000,
+    quoteChecks: [],
+    quoteCheckAvailable: false,
     ...patch,
   }
 }

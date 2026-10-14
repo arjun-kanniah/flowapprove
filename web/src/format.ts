@@ -52,6 +52,8 @@ export function describeEvent(action: string, from: Status | null, to: Status | 
       return 'asked for changes'
     case 'cancel':
       return 'cancelled'
+    case 'quote_checked':
+      return 'ran the AI quote check'
     default:
       return action
   }

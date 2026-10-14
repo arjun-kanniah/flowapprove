@@ -6,7 +6,7 @@ action lands in an append-only audit log. An AI check compares the quote with th
 
 **Status: in development.** Working locally: sign-in as demo personas, raising and editing
 requests, PDF quotes, the full approval path with separation of duties, live updates and the
-audit trail. Next: email notifications, the AI quote check, and the Azure deployment.
+audit trail, and the AI quote check. Next: email notifications and the Azure deployment.
 
 ## Stack
 
@@ -47,11 +47,33 @@ stateDiagram-v2
 - **Audit log:** a database trigger rejects updates and deletes on `audit_events`, so history
   can't be rewritten by application code.
 
+## The AI quote check
+
+When a request is submitted with a quote attached, a model reads the PDF and the request page
+shows whether the quote matches: vendor, total, validity date and items, side by side. The
+requester can run it before submitting, and the approver can run it again.
+
+- **The model extracts; code decides.** The model returns the quote's facts as structured
+  output (vendor, total, currency, valid-until date, line items) and judges only whether the
+  items fit the request. The total is compared to the cent, the date against today and the
+  vendor name after normalising, all in [`compare.ts`](api/src/quote/compare.ts), so a model
+  can't call a quote a match when the numbers differ.
+- **Any of three providers.** Claude, OpenAI or Gemini through each one's official SDK, chosen
+  with `QUOTE_CHECK_MODEL` from an allowlist; the check is off without that provider's key.
+- **Safe with untrusted files.** The quote text is passed as data with an instruction to ignore
+  anything inside it; scanned PDFs with no text come back as "couldn't confirm", not a guess.
+- **Recorded and limited.** Each check is stored with its model and tokens, appears in the
+  request's audit history, and is rate-limited per person.
+
+On the [demo quotes](demo/), Claude Haiku 5.5, GPT-6 Luna and Gemini 3.5 Flash-Lite all passed
+the matching quote and caught each deliberate mismatch (wrong total, expired, wrong vendor),
+in 1 to 5 seconds and under 2,000 tokens a check.
+
 ## Quick start
 
 ```bash
 mise install          # node, just, terraform at pinned versions
-cp .env.example .env  # optional: AI keys, finance threshold
+cp .env.example .env  # add a model key to switch on the AI quote check
 just setup            # install dependencies, generate the database client
 just migrate          # start Postgres 18 in Docker (port 5433) and apply migrations
 just dev-api          # terminal 1: API on http://localhost:8080

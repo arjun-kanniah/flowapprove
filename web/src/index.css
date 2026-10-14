@@ -800,6 +800,145 @@ label {
   border-left-color: var(--warn);
 }
 
+/* AI quote check */
+
+.quote-check {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.quote-check-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.quote-check h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.ai-tag {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  vertical-align: 1px;
+}
+
+.verdict {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  font-weight: 600;
+}
+
+.verdict-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--surface);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.verdict-ok {
+  color: var(--ok);
+}
+
+.verdict-ok .verdict-icon {
+  background: var(--ok);
+}
+
+.verdict-bad {
+  color: var(--danger);
+}
+
+.verdict-bad .verdict-icon {
+  background: var(--danger);
+}
+
+.verdict-unclear {
+  color: var(--warn);
+}
+
+.verdict-unclear .verdict-icon {
+  background: var(--warn);
+}
+
+.findings {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.findings th,
+.findings td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.findings th {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.findings tr:last-child td {
+  border-bottom: none;
+}
+
+.finding-icon {
+  font-weight: 800;
+}
+
+.finding-ok .finding-icon {
+  color: var(--ok);
+}
+
+.finding-mismatch .finding-icon,
+.finding-mismatch td:last-child {
+  color: var(--danger);
+}
+
+.finding-unclear .finding-icon {
+  color: var(--warn);
+}
+
+.finding-note {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.typing {
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing {
+    animation: none;
+  }
+}
+
 /* History accordion */
 
 .accordion summary {
