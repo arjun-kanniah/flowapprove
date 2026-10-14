@@ -380,7 +380,11 @@ label {
   min-width: 0;
 }
 
+/* Pages sit centred in the space beside the sidebar, at a readable width */
 .page {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
   padding: 24px;
 }
 

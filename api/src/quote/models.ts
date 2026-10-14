@@ -28,14 +28,22 @@ export type Extractor = (system: string, prompt: string) => Promise<Extraction>
 
 export class QuoteCheckError extends Error {}
 
+/**
+ * Read QUOTE_CHECK_MODEL: "provider/model", or just the model name, since every name in the
+ * catalog belongs to one provider.
+ */
 export function parseChoice(value: string): ModelChoice {
-  const [provider, model] = value.split('/') as [string, string | undefined]
-  const models: readonly string[] | undefined = CATALOG[provider as Provider]
-  if (!models || !model || !models.includes(model)) {
-    const all = Object.entries(CATALOG).flatMap(([p, ms]) => ms.map((m) => `${p}/${m}`))
-    throw new Error(`QUOTE_CHECK_MODEL must be one of: ${all.join(', ')}`)
+  const spec = value.trim()
+  const [first, second] = spec.split('/') as [string, string | undefined]
+  const entries = Object.entries(CATALOG) as [Provider, readonly string[]][]
+  const match = second
+    ? entries.find(([provider, models]) => provider === first && models.includes(second))
+    : entries.find(([, models]) => models.includes(first))
+  if (!match) {
+    const all = entries.flatMap(([p, ms]) => ms.map((m) => `${p}/${m}`))
+    throw new Error(`QUOTE_CHECK_MODEL "${spec}" isn't offered. Choose one of: ${all.join(', ')}`)
   }
-  return { provider: provider as Provider, model }
+  return { provider: match[0], model: second ?? first }
 }
 
 /** Keep only what the schema allows, whichever provider produced it. */
