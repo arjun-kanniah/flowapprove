@@ -20,6 +20,11 @@ const Env = z.object({
   SESSION_SECRET: z.string().min(32).optional(),
   /** Where attachments go in development. */
   STORAGE_DIR: z.string().default('.data/attachments'),
+  /** Blob Storage for attachments in Azure, e.g. https://<account>.blob.core.windows.net */
+  AZURE_STORAGE_ACCOUNT_URL: z.string().default(''),
+  AZURE_STORAGE_CONTAINER: z.string().default('attachments'),
+  /** The built web app, served by the API in production (one origin for the app and Socket.IO). */
+  STATIC_DIR: z.string().optional(),
   /** The model that reads quotes, as provider/model; the check is off without its key. */
   QUOTE_CHECK_MODEL: z.string().default('anthropic/claude-haiku-5-5'),
   /** Checks each person may run in an hour (automatic checks on submit included). */

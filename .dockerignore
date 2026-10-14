@@ -1,0 +1,9 @@
+# Only what the Dockerfile copies matters; keep secrets, caches and build output out
+.env
+.env.*
+.git
+**/node_modules
+**/dist
+**/.data
+api/src/generated
+infra

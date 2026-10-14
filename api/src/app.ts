@@ -1,5 +1,6 @@
 import cookie from '@fastify/cookie'
 import multipart from '@fastify/multipart'
+import fastifyStatic from '@fastify/static'
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import {
@@ -340,6 +341,12 @@ export function buildApp({
     await removeAttachment(db, storage, user, id, publish)
     return reply.status(204).send()
   })
+
+  // --- The web app, in production: the API serves the built files from the same origin ---
+
+  if (config.STATIC_DIR) {
+    app.register(fastifyStatic, { root: config.STATIC_DIR, index: 'index.html' })
+  }
 
   return app
 }

@@ -1,12 +1,12 @@
 import { loadConfig } from './config.js'
 import { createDb } from './db.js'
 import { seedDemo } from './seed.js'
-import { LocalStorage } from './storage.js'
+import { createStorage } from './storage.js'
 
 // `just seed`: replace the data with the demo personas and requests.
 const config = loadConfig()
 const db = createDb(config.DATABASE_URL)
-const storage = new LocalStorage(config.STORAGE_DIR)
+const storage = createStorage(config)
 const users = await seedDemo(
   db,
   { financeThresholdCents: config.financeThresholdCents },

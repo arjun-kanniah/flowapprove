@@ -1,0 +1,5 @@
+# Copy to terraform.tfvars (git-ignored) and fill in.
+subscription_id = "00000000-0000-0000-0000-000000000000"
+budget_emails   = ["you@example.com"]
+# monthly_budget    = 20
+# quote_check_model = "gemini/gemini-3.5-flash-lite"

@@ -6,11 +6,11 @@ import type { RequestEvent } from './requests.js'
 import { AcsMailer, LogMailer } from './mailer.js'
 import { startOutboxWorker } from './outbox.js'
 import { makeExtractor, parseChoice } from './quote/models.js'
-import { LocalStorage } from './storage.js'
+import { createStorage } from './storage.js'
 
 const config = loadConfig()
 const db = createDb(config.DATABASE_URL)
-const storage = new LocalStorage(config.STORAGE_DIR)
+const storage = createStorage(config)
 
 // Socket.IO needs the HTTP server, which exists only once the app is built: publish late
 // The quote check runs when the chosen model's provider has a key
