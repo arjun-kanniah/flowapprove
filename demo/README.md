@@ -15,6 +15,7 @@ Fictional vendor quotes for trying FlowApprove. Every vendor, price and detail i
 | `ergo_works_quote.pdf` | $650.00 | Standing desk: Mo asked Sam for the quote, so sign in as Sam, attach it and resubmit |
 | `keycraft_quote.pdf` | $180.00 | Rita's mechanical keyboard draft |
 | `contoso_docks_quote.pdf` | $860.00 | A new request: 4 USB-C docking stations from Contoso Supplies, $860 |
+| `tailspin_laptops_quote.pdf` | $2,356.00 | A new request that needs finance approval: two laptops and sleeves from Tailspin Computers, $2,356 |
 
 ## Quotes that don't match (for the AI quote check)
 

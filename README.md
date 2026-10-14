@@ -7,6 +7,8 @@ action lands in an append-only audit log. An AI check compares the quote with th
 **[Live demo](https://flowapprove.arjunkanniah.dev)**: pick a persona, or sign in with your own
 Microsoft account, and try both sides of a request (sample data, reset nightly).
 
+![Rita raises a $2,356 request with the vendor's quote; the AI check confirms vendor, total and dates; Mo, her manager, approves; Fay in finance gives the final approval.](docs/flowapprove-demo.gif)
+
 **Status: in development.** Working: sign-in with Microsoft accounts or demo personas, raising
 and editing requests, PDF quotes, the full approval path with separation of duties, live
 updates and the audit trail, the AI quote check and email notifications, deployed to Azure.
@@ -104,6 +106,35 @@ MSAL library).
   matched by email only when sign-in is limited to one organisation's tenant.
 - **On the demo**, people who sign in join as a requester reporting to Mo, so they can raise a
   request as themselves and approve it as Mo.
+
+## Deployment
+
+Azure, all in Terraform ([`infra/`](infra/)), deployed by GitHub Actions on every push to
+`main`.
+
+```mermaid
+flowchart LR
+    gh[GitHub Actions] -- "federated sign-in, no stored keys" --> aca
+    gh -- images --> ghcr[GitHub Container Registry]
+    user[Browser] -- "flowapprove.arjunkanniah.dev" --> aca[Container Apps<br>app, migrate job, nightly reset]
+    aca -- managed identity --> kv[Key Vault]
+    aca -- managed identity --> blob[Blob Storage<br>quote PDFs]
+    aca -- managed identity --> entra[Entra ID<br>Microsoft sign-in]
+    aca --> pg[(PostgreSQL)]
+    aca --> llm[Claude / OpenAI / Gemini]
+```
+
+- **No stored keys.** The app reaches Key Vault, Blob Storage and its Microsoft sign-in with
+  its managed identity; GitHub Actions deploys through a federated credential that only this
+  repository's `main` branch can use. Secret values are entered at a hidden prompt
+  (`just secret`) and never pass through Terraform state.
+- **Safe rollouts.** Each deploy runs the migrations as a job first, then rolls out the new
+  image and smoke-tests it.
+- **Cost guardrails.** A budget alert is created before anything that costs money; the app
+  scales to zero when idle; logs are capped inside the free allowance; the AI check is
+  rate-limited per person.
+- **Custom domain** with an Azure-managed certificate, its DNS records in Terraform on
+  Cloudflare.
 
 ## Quick start
 

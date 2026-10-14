@@ -62,6 +62,11 @@ QUOTES = [
     Quote("contoso_docks_quote.pdf", "Contoso Supplies", "900 Commerce Drive, Columbus, OH",
           "CS-Q-4410", "12 October 2026", "30 November 2026",
           [("USB-C docking station", 4, 215.00)]),
+    # Not seeded: for raising a request that needs finance approval (the README walkthrough)
+    Quote("tailspin_laptops_quote.pdf", "Tailspin Computers", "45 Lakeview Blvd, Madison, WI",
+          "TC-61204", "11 October 2026", "11 December 2026",
+          [("14-inch laptop, 32 GB, 1 TB", 2, 1149.00), ("Laptop sleeve", 2, 29.00)],
+          ["Shipped within 3 business days. Includes a 3-year warranty."]),
     # For the AI check: these disagree with a request on purpose
     Quote("mismatch_contoso_docks_wrong_total.pdf", "Contoso Supplies",
           "900 Commerce Drive, Columbus, OH", "CS-Q-4415", "12 October 2026", "30 November 2026",
