@@ -4,12 +4,12 @@ Purchase-request approvals: a requester submits a request with a vendor quote, i
 manager and, above a threshold, to finance; everyone sees changes live, gets email, and every
 action lands in an append-only audit log. An AI check compares the quote with the request.
 
-**[Live demo](https://flowapprove.arjunkanniah.dev)**: pick a persona and try both sides of a request (sample data, reset nightly).
+**[Live demo](https://flowapprove.arjunkanniah.dev)**: pick a persona, or sign in with your own
+Microsoft account, and try both sides of a request (sample data, reset nightly).
 
-**Status: in development.** Working locally: sign-in as demo personas, raising and editing
-requests, PDF quotes, the full approval path with separation of duties, live updates and the
-audit trail, the AI quote check and email notifications, deployed to Azure. Next: a custom
-domain and Entra ID sign-in.
+**Status: in development.** Working: sign-in with Microsoft accounts or demo personas, raising
+and editing requests, PDF quotes, the full approval path with separation of duties, live
+updates and the audit trail, the AI quote check and email notifications, deployed to Azure.
 
 ## Stack
 
@@ -87,6 +87,23 @@ approver it was waiting on.
   the app's managed identity, so there's no email key to store.
 - **In the app**, the ✉ button shows each person the notifications sent to them. On the demo,
   whose people and addresses are made up, that's where they appear instead of being sent.
+
+## Sign-in with Microsoft
+
+Work, school and personal Microsoft accounts can sign in through Entra ID, with the OpenID
+Connect authorization code flow and PKCE ([`entra.ts`](api/src/entra.ts), using Microsoft's
+MSAL library).
+
+- **No client secret.** The app proves who it is with a token from its Azure managed identity,
+  which the app registration trusts through a federated credential, so there's no secret to
+  store, leak or rotate.
+- **Checked at every step.** A one-time state ties Microsoft's reply to the browser that asked
+  for it, a nonce ties the ID token to this sign-in, and PKCE ties the code to the app that
+  requested it.
+- **Accounts are keyed by tenant and object ID,** not email, and an existing account is
+  matched by email only when sign-in is limited to one organisation's tenant.
+- **On the demo**, people who sign in join as a requester reporting to Mo, so they can raise a
+  request as themselves and approve it as Mo.
 
 ## Quick start
 

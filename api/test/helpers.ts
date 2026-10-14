@@ -5,6 +5,7 @@ import { loadConfig } from '../src/config.js'
 import { createDb, type Db } from '../src/db.js'
 import type { User } from '../src/generated/prisma/client.js'
 import type { RequestEvent } from '../src/requests.js'
+import type { EntraSignIn } from '../src/entra.js'
 import type { QuoteChecker } from '../src/quote/check.js'
 import { seedDemo } from '../src/seed.js'
 import { LocalStorage } from '../src/storage.js'
@@ -32,11 +33,14 @@ interface Response {
   body: any // eslint-disable-line @typescript-eslint/no-explicit-any -- test responses
 }
 
-export async function setUp(options: { quoteChecker?: QuoteChecker } = {}): Promise<TestContext> {
+export async function setUp(
+  options: { quoteChecker?: QuoteChecker; entra?: EntraSignIn; env?: Record<string, string> } = {},
+): Promise<TestContext> {
   const config = loadConfig({
     NODE_ENV: 'test',
     DATABASE_URL: inject('testDatabaseUrl'),
     APPROVAL_FINANCE_THRESHOLD: '1000',
+    ...options.env,
   })
   const db = createDb(config.DATABASE_URL)
   const storage = new LocalStorage(mkdtempSync(join(tmpdir(), 'flowapprove-test-')))
@@ -48,6 +52,7 @@ export async function setUp(options: { quoteChecker?: QuoteChecker } = {}): Prom
     storage,
     publish: (e) => events.push(e),
     quoteChecker: options.quoteChecker ?? null,
+    entra: options.entra ?? null,
   })
   await app.ready()
 

@@ -188,6 +188,37 @@ label {
   font-size: 1.1rem;
 }
 
+.entra {
+  margin-top: 24px;
+}
+
+/* Microsoft's sign-in button: their logo on a plain light or dark button */
+.microsoft {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 16px;
+  border: 1px solid #8c8c8c;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #5e5e5e;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.microsoft:hover {
+  border-color: var(--accent);
+}
+
+:root[data-theme='dark'] .microsoft {
+  background: #2f2f2f;
+  color: #ffffff;
+}
+
+.entra .muted {
+  max-width: 52ch;
+}
+
 .personas {
   display: grid;
   gap: 8px;

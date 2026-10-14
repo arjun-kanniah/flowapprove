@@ -83,7 +83,14 @@ export function App() {
 
   if (me === undefined) return null
   if (me === null) {
-    return <SignIn demo={health?.demo ?? false} onSignedIn={() => { loadMe(); go(href.list('inbox')) }} />
+    return (
+      <SignIn
+        demo={health?.demo ?? false}
+        personasOn={(health?.auth ?? 'demo') === 'demo'}
+        entra={health?.entra ?? false}
+        onSignedIn={() => { loadMe(); go(href.list('inbox')) }}
+      />
+    )
   }
 
   const canSeeAll = me.roles.includes('finance') || me.roles.includes('admin')

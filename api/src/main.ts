@@ -1,6 +1,7 @@
 import { buildApp } from './app.js'
 import { loadConfig } from './config.js'
 import { createDb } from './db.js'
+import { createEntraSignIn } from './entra.js'
 import { attachRealtime } from './realtime.js'
 import type { RequestEvent } from './requests.js'
 import { AcsMailer, LogMailer } from './mailer.js'
@@ -25,7 +26,8 @@ const quoteChecker = keys[choice.provider]
   : null
 
 let send: (event: RequestEvent) => void = () => {}
-const app = buildApp({ config, db, storage, publish: (event) => send(event), quoteChecker })
+const entra = createEntraSignIn(config)
+const app = buildApp({ config, db, storage, publish: (event) => send(event), quoteChecker, entra })
 app.log.info(
   quoteChecker
     ? `Quote check: ${choice.provider}/${choice.model}`

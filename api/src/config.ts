@@ -16,6 +16,12 @@ const Env = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  /** Sign-in with Microsoft accounts: the app registration's client ID. Off when empty. */
+  ENTRA_CLIENT_ID: z.string().default(''),
+  /** Who can sign in: common (any Microsoft account), organizations, or one tenant's ID. */
+  ENTRA_TENANT: z.string().default('common'),
+  /** The managed identity the app runs as (Blob Storage, and the sign-in credential). */
+  AZURE_CLIENT_ID: z.string().default(''),
   /** Signs the session cookie. Required outside development. */
   SESSION_SECRET: z.string().min(32).optional(),
   /** Where attachments go in development. */
@@ -49,6 +55,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = Env.parse(env)
   if (parsed.NODE_ENV === 'production' && !parsed.SESSION_SECRET) {
     throw new Error('SESSION_SECRET must be set in production.')
+  }
+  if (parsed.AUTH_MODE === 'entra' && !parsed.ENTRA_CLIENT_ID) {
+    throw new Error('AUTH_MODE=entra needs ENTRA_CLIENT_ID.')
   }
   return {
     ...parsed,

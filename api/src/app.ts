@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from 'node:crypto'
 import cookie from '@fastify/cookie'
 import multipart from '@fastify/multipart'
 import fastifyStatic from '@fastify/static'
@@ -11,8 +12,9 @@ import {
 } from './attachments.js'
 import type { Config } from './config.js'
 import type { Db } from './db.js'
+import type { EntraProfile, EntraSignIn } from './entra.js'
 import { badRequest, HttpError, notFound, unauthorized } from './errors.js'
-import type { User } from './generated/prisma/client.js'
+import { Prisma, type User } from './generated/prisma/client.js'
 import {
   act,
   actionsFor,
@@ -29,6 +31,11 @@ import { ACTIONS, type Policy } from './workflow.js'
 
 export const VERSION = '0.1.0'
 export const SESSION_COOKIE = 'fa_session'
+/** Holds the state, nonce and PKCE verifier between leaving for Microsoft and coming back. */
+const ENTRA_COOKIE = 'fa_entra'
+const ENTRA_PATH = '/api/auth/entra'
+/** On the demo, people who sign in with Microsoft report to Mo, so they can approve as Mo. */
+const DEMO_VISITOR_MANAGER = 'mo@example.com'
 const SESSION_DAYS = 7
 
 declare module 'fastify' {
@@ -71,6 +78,8 @@ export interface AppDeps {
   publish?: Publish
   /** Reads quotes with a model; null when no model is configured. */
   quoteChecker?: QuoteChecker | null
+  /** Sign-in with Microsoft accounts; null when it isn't configured. */
+  entra?: EntraSignIn | null
 }
 
 /** The HTTP app, built separately from main.ts so tests can call it without a network port. */
@@ -80,6 +89,7 @@ export function buildApp({
   storage,
   publish = () => {},
   quoteChecker = null,
+  entra = null,
 }: AppDeps): FastifyInstance {
   const app = Fastify({ logger: config.NODE_ENV !== 'test' })
   const policy: Policy = { financeThresholdCents: config.financeThresholdCents }
@@ -139,6 +149,7 @@ export function buildApp({
       version: VERSION,
       demo: config.DEMO_MODE,
       auth: config.AUTH_MODE,
+      entra: entra !== null,
       email: config.EMAIL_DELIVERY,
     }
   })
@@ -168,6 +179,104 @@ export function buildApp({
     if (!user) throw notFound('No such persona')
     startSession(reply, user)
     return { id: user.id, name: user.name }
+  })
+
+  // --- Signing in with Microsoft (OpenID Connect, authorization code flow with PKCE) -----
+
+  const entraRedirectUri = `${config.APP_URL.replace(/\/$/, '')}${ENTRA_PATH}/callback`
+  const randomToken = () => randomBytes(32).toString('base64url')
+  const PendingSignIn = z.object({ state: z.string(), nonce: z.string(), verifier: z.string() })
+  const CallbackQuery = z.object({
+    code: z.string().optional(),
+    state: z.string().optional(),
+    error: z.string().optional(),
+  })
+  // Email claims aren't verified for every account type, so an existing account is matched by
+  // email only when sign-in is limited to one organisation's tenant
+  const singleTenant = !['common', 'organizations', 'consumers'].includes(config.ENTRA_TENANT)
+
+  /** The person's account, created the first time they sign in. */
+  async function entraUser(profile: EntraProfile): Promise<User | null> {
+    const known = await db.user.findUnique({ where: { entraObjectId: profile.objectId } })
+    if (known) return db.user.update({ where: { id: known.id }, data: { name: profile.name } })
+    if (singleTenant) {
+      const invited = await db.user.findFirst({
+        where: { email: profile.email, entraObjectId: null, isDemo: false },
+      })
+      if (invited) {
+        return db.user.update({ where: { id: invited.id }, data: { entraObjectId: profile.objectId } })
+      }
+    }
+    const manager = config.DEMO_MODE
+      ? await db.user.findFirst({ where: { email: DEMO_VISITOR_MANAGER, isDemo: true } })
+      : null
+    try {
+      return await db.user.create({
+        data: {
+          entraObjectId: profile.objectId,
+          name: profile.name,
+          email: profile.email,
+          roles: ['requester'],
+          managerId: manager?.id ?? null,
+        },
+      })
+    } catch (error) {
+      // Someone else already has this email address
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') return null
+      throw error
+    }
+  }
+
+  app.get(`${ENTRA_PATH}/start`, async (_request, reply) => {
+    if (!entra) throw notFound()
+    const pending = { state: randomToken(), nonce: randomToken(), verifier: randomToken() }
+    reply.setCookie(ENTRA_COOKIE, JSON.stringify(pending), {
+      path: ENTRA_PATH,
+      httpOnly: true,
+      sameSite: 'lax', // sent on the redirect back from Microsoft, a top-level GET
+      secure,
+      signed: true,
+      maxAge: 600,
+    })
+    const url = await entra.authUrl({
+      redirectUri: entraRedirectUri,
+      state: pending.state,
+      nonce: pending.nonce,
+      codeChallenge: createHash('sha256').update(pending.verifier).digest('base64url'),
+    })
+    return reply.redirect(url)
+  })
+
+  app.get(`${ENTRA_PATH}/callback`, async (request, reply) => {
+    if (!entra) throw notFound()
+    // Back to the sign-in page with a reason it can show
+    const back = (why: string) => reply.redirect(`/?signin=${why}`)
+    const query = CallbackQuery.parse(request.query)
+    const raw = request.cookies[ENTRA_COOKIE]
+    const unsigned = raw ? request.unsignCookie(raw) : null
+    reply.clearCookie(ENTRA_COOKIE, { path: ENTRA_PATH })
+    if (query.error) return back('cancelled')
+
+    const pending = unsigned?.valid && unsigned.value ? PendingSignIn.safeParse(JSON.parse(unsigned.value)) : null
+    if (!pending?.success || !query.code || query.state !== pending.data.state) return back('expired')
+
+    let profile: EntraProfile
+    try {
+      profile = await entra.redeem({
+        redirectUri: entraRedirectUri,
+        code: query.code,
+        state: query.state,
+        nonce: pending.data.nonce,
+        codeVerifier: pending.data.verifier,
+      })
+    } catch (error) {
+      request.log.warn({ err: error }, 'Microsoft sign-in failed')
+      return back('failed')
+    }
+    const user = await entraUser(profile)
+    if (!user) return back('taken')
+    startSession(reply, user)
+    return reply.redirect('/')
   })
 
   app.post('/api/auth/logout', async (_request, reply) => {

@@ -19,6 +19,8 @@ export type Health = {
   version: string
   demo: boolean
   auth: 'demo' | 'entra'
+  /** Sign-in with Microsoft accounts is set up */
+  entra: boolean
   /** log: emails are recorded but not sent (local and the demo) */
   email: 'log' | 'acs'
 }

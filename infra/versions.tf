@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.9.0"
     }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 3.10.0"
+    }
     cloudflare = {
       source  = "cloudflare/cloudflare"
       version = "~> 5.27.0"
@@ -31,6 +35,9 @@ provider "azurerm" {
   # Storage accounts here have shared keys turned off, so data-plane calls use Entra ID
   storage_use_azuread = true
 }
+
+# App registrations, signed in with the same Azure CLI account
+provider "azuread" {}
 
 # Reads CLOUDFLARE_API_TOKEN, which `just infra` loads (see the justfile).
 provider "cloudflare" {}

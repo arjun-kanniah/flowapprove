@@ -15,6 +15,9 @@ locals {
     AZURE_STORAGE_CONTAINER   = azurerm_storage_container.attachments.name
     # DefaultAzureCredential signs in as this identity
     AZURE_CLIENT_ID = azurerm_user_assigned_identity.app.client_id
+    # Sign-in with Microsoft accounts (signin.tf)
+    ENTRA_CLIENT_ID = azuread_application.signin.client_id
+    ENTRA_TENANT    = "common"
   }
 }
 
