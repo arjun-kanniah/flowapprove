@@ -85,12 +85,13 @@ resource "azurerm_user_assigned_identity" "deploy" {
 }
 
 # Only this repository's main branch can sign in as the deploy identity: no stored keys.
+# The subject names the repository by its numeric IDs as well as its name (see the variable).
 resource "azurerm_federated_identity_credential" "github_main" {
   name                      = "github-main"
   user_assigned_identity_id = azurerm_user_assigned_identity.deploy.id
   issuer                    = "https://token.actions.githubusercontent.com"
   audience                  = ["api://AzureADTokenExchange"]
-  subject                   = "repo:${var.github_repository}:ref:refs/heads/main"
+  subject                   = var.github_oidc_subject
 }
 
 # Deploys update the app's image and run its jobs, all inside this resource group.

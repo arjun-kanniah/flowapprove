@@ -21,6 +21,12 @@ variable "github_repository" {
   default     = "arjun-kanniah/flowapprove"
 }
 
+variable "github_oidc_subject" {
+  description = "Subject GitHub Actions presents from the main branch. GitHub now puts the owner's and repository's numeric IDs in it, so a deleted and recreated repository with the same name can't inherit access. From: gh api repos/<owner>/<repo>."
+  type        = string
+  default     = "repo:arjun-kanniah@33810967/flowapprove@1417627246:ref:refs/heads/main"
+}
+
 variable "deploy_app" {
   description = "Create the container app and its jobs. False for the first apply, before the secrets and images exist."
   type        = bool
