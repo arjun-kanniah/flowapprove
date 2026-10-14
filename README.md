@@ -6,7 +6,7 @@ action lands in an append-only audit log. An AI check compares the quote with th
 
 **Status: in development.** Working locally: sign-in as demo personas, raising and editing
 requests, PDF quotes, the full approval path with separation of duties, live updates and the
-audit trail, and the AI quote check. Next: email notifications and the Azure deployment.
+audit trail, the AI quote check and email notifications. Next: the Azure deployment.
 
 ## Stack
 
@@ -68,6 +68,22 @@ requester can run it before submitting, and the approver can run it again.
 On the [demo quotes](demo/), Claude Haiku 5.5, GPT-6 Luna and Gemini 3.5 Flash-Lite all passed
 the matching quote and caught each deliberate mismatch (wrong total, expired, wrong vendor),
 in 1 to 5 seconds and under 2,000 tokens a check.
+
+## Email notifications
+
+The manager hears when a request needs them, finance when one passes their threshold, and the
+requester when it's approved, rejected or sent back (with the comment). Cancelling tells the
+approver it was waiting on.
+
+- **Outbox pattern.** Emails are written in the same database transaction as the decision, so
+  one is never saved without the other. A background worker sends them, retrying failures at
+  growing intervals (30 s up to 32 min, five attempts) and recording the outcome. Rows are
+  claimed with `FOR UPDATE SKIP LOCKED`, so several instances can deliver without sending
+  anything twice.
+- **Azure Communication Services** sends them in Azure (`EMAIL_DELIVERY=acs`), signed in with
+  the app's managed identity, so there's no email key to store.
+- **In the app**, the ✉ button shows each person the notifications sent to them. On the demo,
+  whose people and addresses are made up, that's where they appear instead of being sent.
 
 ## Quick start
 

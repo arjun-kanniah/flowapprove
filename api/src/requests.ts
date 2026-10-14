@@ -1,4 +1,5 @@
 import type { Db } from './db.js'
+import { type MailSettings, queueNotifications } from './emails.js'
 import { badRequest, conflict, forbidden, notFound } from './errors.js'
 import type { Prisma, PurchaseRequest, User } from './generated/prisma/client.js'
 import {
@@ -158,6 +159,7 @@ export async function act(
   comment: string,
   policy: Policy,
   publish: Publish,
+  mail: MailSettings,
 ): Promise<PurchaseRequest> {
   const needsComment = action === 'reject' || action === 'request_changes'
   if (needsComment && !comment.trim()) {
@@ -202,6 +204,13 @@ export async function act(
         toStatus: decision.next,
         details: comment ? { comment } : {},
       },
+    })
+    await queueNotifications(tx, mail, {
+      request: updated,
+      action,
+      actor: user,
+      comment,
+      previousStatus: current.status,
     })
     return updated
   })

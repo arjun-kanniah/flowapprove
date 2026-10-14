@@ -38,6 +38,13 @@ enum DecisionAction {
   request_changes
 }
 
+enum EmailStatus {
+  pending
+  sent
+  logged
+  failed
+}
+
 enum AiCheckStatus {
   running
   done
@@ -63,6 +70,7 @@ model User {
   decisions       Decision[]
   attachments     Attachment[]
   auditEvents     AuditEvent[]
+  emails          EmailMessage[]
 
   @@map("users")
 }
@@ -92,6 +100,7 @@ model PurchaseRequest {
   decisions   Decision[]
   auditEvents AuditEvent[]
   aiChecks    AiCheck[]
+  emails      EmailMessage[]
 
   @@index([requesterId, createdAt])
   @@index([managerId, status])
@@ -170,4 +179,30 @@ model AiCheck {
 
   @@index([requestId, createdAt])
   @@map("ai_checks")
+}
+
+/// Outbox: written in the same transaction as the change it reports, then delivered by a
+/// background worker, so a decision is never saved without its notification.
+model EmailMessage {
+  id          String           @id @default(uuid()) @db.Uuid
+  toUserId    String           @map("to_user_id") @db.Uuid
+  toUser      User             @relation(fields: [toUserId], references: [id], onDelete: Cascade)
+  toAddress   String           @map("to_address")
+  requestId   String?          @map("request_id") @db.Uuid
+  request     PurchaseRequest? @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  /// What it's about, e.g. approval_needed, approved
+  kind        String
+  subject     String
+  text        String
+  status      EmailStatus      @default(pending)
+  attempts    Int              @default(0)
+  nextAttempt DateTime         @default(now()) @map("next_attempt") @db.Timestamptz
+  lastError   String?          @map("last_error")
+  sentAt      DateTime?        @map("sent_at") @db.Timestamptz
+  readAt      DateTime?        @map("read_at") @db.Timestamptz
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([status, nextAttempt])
+  @@index([toUserId, createdAt])
+  @@map("email_messages")
 }

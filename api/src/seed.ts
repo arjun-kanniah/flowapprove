@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { addAttachment } from './attachments.js'
 import type { Db } from './db.js'
+import type { MailSettings } from './emails.js'
 import type { Role, User } from './generated/prisma/client.js'
 import { act, createRequest } from './requests.js'
 import { resetData } from './reset.js'
@@ -116,6 +117,7 @@ export async function seedDemo(
   db: Db,
   policy: Policy,
   storage: Storage,
+  mail: MailSettings = { appUrl: 'http://localhost:5174' },
 ): Promise<Record<string, User>> {
   const oldFiles = await db.attachment.findMany({ select: { storageKey: true } })
   await resetData(db)
@@ -153,7 +155,7 @@ export async function seedDemo(
       await addAttachment(db, storage, requester, created.id, { filename: r.quote, data }, quiet)
     }
     for (const [who, action, comment = ''] of r.steps) {
-      await act(db, users[who]!, created.id, action, comment, policy, quiet)
+      await act(db, users[who]!, created.id, action, comment, policy, quiet, mail)
     }
   }
   return users

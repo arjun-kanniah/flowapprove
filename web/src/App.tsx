@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type Health, type Me, type Role, type Status, type View } from './api'
 import { type LiveMessage, useLiveUpdates } from './live'
+import { Emails } from './Emails'
 import { NewRequest } from './RequestForm'
 import { RequestDetail } from './RequestDetail'
 import { RequestList } from './RequestList'
@@ -35,6 +36,7 @@ export function App() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [inboxCount, setInboxCount] = useState(0)
   const [openCount, setOpenCount] = useState(0) // the user's requests not yet decided
+  const [unreadEmails, setUnreadEmails] = useState(0)
   const [toasts, setToasts] = useState<Toast[]>([])
   const route = useRoute()
 
@@ -52,6 +54,7 @@ export function App() {
     if (!me) return
     api.list('inbox').then((r) => setInboxCount(r.length), () => {})
     api.list('mine').then((r) => setOpenCount(r.filter((x) => OPEN.includes(x.status)).length), () => {})
+    api.emails().then((r) => setUnreadEmails(r.unread), () => {})
   }, [me, refreshKey])
 
   const onLive = useCallback(
@@ -110,6 +113,14 @@ export function App() {
             <strong>{me.name}</strong>
             <span className="muted small">{roleLabel}</span>
           </span>
+          <a
+            className={`icon-button mail-button ${route.page === 'emails' ? 'active' : ''}`}
+            href={href.emails()}
+            aria-label={`Email${unreadEmails ? `, ${unreadEmails} unread` : ''}`}
+            title="Email"
+          >
+            ✉{!!unreadEmails && <span className="mail-count">{unreadEmails}</span>}
+          </a>
           <ThemeToggle />
           <button
             type="button"
@@ -140,6 +151,13 @@ export function App() {
         {route.page === 'list' && <RequestList view={route.view} refreshKey={refreshKey} />}
         {route.page === 'new' && <NewRequest onCreated={(id) => go(href.request(id))} />}
         {route.page === 'request' && <RequestDetail id={route.id} refreshKey={refreshKey} />}
+        {route.page === 'emails' && (
+          <Emails
+            refreshKey={refreshKey}
+            sentForReal={health?.email === 'acs'}
+            onRead={() => setUnreadEmails((n) => Math.max(0, n - 1))}
+          />
+        )}
       </main>
       {route.page !== 'new' && (
         <a className="fab" href={href.new()} aria-label="New request">

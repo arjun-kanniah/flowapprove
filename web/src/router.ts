@@ -4,12 +4,14 @@ import type { View } from './api'
 export type Route =
   | { page: 'list'; view: View }
   | { page: 'new' }
+  | { page: 'emails' }
   | { page: 'request'; id: string }
 
 export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#\/?/, '')
   const [first, second] = path.split('/')
   if (first === 'new') return { page: 'new' }
+  if (first === 'emails') return { page: 'emails' }
   if (first === 'requests' && second) return { page: 'request', id: second }
   if (first === 'mine' || first === 'all') return { page: 'list', view: first }
   return { page: 'list', view: 'inbox' }
@@ -18,6 +20,7 @@ export function parseRoute(hash: string): Route {
 export const href = {
   list: (view: View) => `#/${view}`,
   new: () => '#/new',
+  emails: () => '#/emails',
   request: (id: string) => `#/requests/${id}`,
 }
 

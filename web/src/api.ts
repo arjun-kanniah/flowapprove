@@ -14,7 +14,14 @@ export type Person = { id: string; name: string }
 
 export type Me = { id: string; name: string; email: string; roles: Role[]; manager: Person | null }
 export type Persona = Me
-export type Health = { status: string; version: string; demo: boolean; auth: 'demo' | 'entra' }
+export type Health = {
+  status: string
+  version: string
+  demo: boolean
+  auth: 'demo' | 'entra'
+  /** log: emails are recorded but not sent (local and the demo) */
+  email: 'log' | 'acs'
+}
 
 export type RequestSummary = {
   id: string
@@ -75,6 +82,17 @@ export type QuoteCheck = {
   filename: string
   error: string | null
   createdAt: string
+}
+
+export type Email = {
+  id: string
+  kind: string
+  subject: string
+  text: string
+  requestId: string | null
+  status: 'pending' | 'sent' | 'logged' | 'failed'
+  createdAt: string
+  readAt: string | null
 }
 
 export type RequestDetail = RequestSummary & {
@@ -146,5 +164,7 @@ export const api = {
     return call<Attachment>(`/api/requests/${id}/attachments`, { method: 'POST', body: form })
   },
   removeAttachment: (id: string) => call<void>(`/api/attachments/${id}`, { method: 'DELETE' }),
+  emails: () => call<{ emails: Email[]; unread: number }>('/api/emails'),
+  markRead: (id: string) => call<{ updated: number }>(`/api/emails/${id}/read`, { method: 'POST' }),
   checkQuote: (id: string) => call<QuoteCheck>(`/api/requests/${id}/quote-check`, { method: 'POST' }),
 }

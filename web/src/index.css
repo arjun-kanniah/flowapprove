@@ -943,6 +943,119 @@ label {
   }
 }
 
+/* Email */
+
+.mail-button {
+  position: relative;
+  text-decoration: none;
+}
+
+.mail-button.active {
+  border-color: var(--accent);
+}
+
+.mail-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+}
+
+.emails {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.email {
+  gap: 0;
+  padding: 0;
+}
+
+.email-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.email-subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.email.unread .email-subject {
+  font-weight: 700;
+}
+
+.email.unread {
+  border-left: 3px solid var(--accent);
+}
+
+.email-kind {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--chip);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.kind-approval_needed {
+  color: var(--info);
+}
+
+.kind-approved {
+  color: var(--ok);
+}
+
+.kind-rejected {
+  color: var(--danger);
+}
+
+.kind-changes_requested,
+.kind-cancelled {
+  color: var(--warn);
+}
+
+.email-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.email-body pre {
+  margin: 0;
+  padding: 14px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-family: inherit;
+  white-space: pre-wrap;
+}
+
+.email-body .button {
+  justify-self: start;
+}
+
 /* History accordion */
 
 .accordion summary {
@@ -1044,6 +1157,15 @@ label {
   .who-text,
   .switch-label {
     display: none;
+  }
+
+  .email-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .email-kind {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .sidebar {

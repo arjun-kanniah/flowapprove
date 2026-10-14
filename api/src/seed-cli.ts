@@ -7,6 +7,11 @@ import { LocalStorage } from './storage.js'
 const config = loadConfig()
 const db = createDb(config.DATABASE_URL)
 const storage = new LocalStorage(config.STORAGE_DIR)
-const users = await seedDemo(db, { financeThresholdCents: config.financeThresholdCents }, storage)
+const users = await seedDemo(
+  db,
+  { financeThresholdCents: config.financeThresholdCents },
+  storage,
+  { appUrl: config.APP_URL },
+)
 console.log(`Seeded ${Object.keys(users).length} personas and their requests.`)
 await db.$disconnect()

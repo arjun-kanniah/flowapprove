@@ -84,6 +84,7 @@ export function buildApp({
   const policy: Policy = { financeThresholdCents: config.financeThresholdCents }
   const secure = config.NODE_ENV === 'production'
   const checkLimit = new HourlyLimit(config.QUOTE_CHECKS_PER_HOUR)
+  const mail = { appUrl: config.APP_URL }
 
   app.register(cookie, { secret: config.SESSION_SECRET })
   app.register(multipart, { limits: { fileSize: MAX_ATTACHMENT_BYTES, files: 1 } })
@@ -132,7 +133,13 @@ export function buildApp({
 
   app.get('/api/health', async () => {
     await db.$queryRaw`SELECT 1`
-    return { status: 'ok', version: VERSION, demo: config.DEMO_MODE, auth: config.AUTH_MODE }
+    return {
+      status: 'ok',
+      version: VERSION,
+      demo: config.DEMO_MODE,
+      auth: config.AUTH_MODE,
+      email: config.EMAIL_DELIVERY,
+    }
   })
 
   // --- Signing in -----------------------------------------------------------------------
@@ -241,7 +248,7 @@ export function buildApp({
     const user = signedIn(request)
     const { id } = IdParams.parse(request.params)
     const { action, comment } = ActionBody.parse(request.body)
-    const result = await act(db, user, id, action, comment, policy, publish)
+    const result = await act(db, user, id, action, comment, policy, publish, mail)
     if (action === 'submit') startCheckOnSubmit(user, id)
     return result
   })
@@ -269,6 +276,38 @@ export function buildApp({
     }
     const check = await runQuoteCheck(db, storage, quoteChecker, id, attachment.id, publish, user)
     return reply.status(201).send(check)
+  })
+
+  // --- Emails: what each person was sent, shown in the app (the demo's addresses are fake) ---
+
+  app.get('/api/emails', async (request) => {
+    const user = signedIn(request)
+    const emails = await db.emailMessage.findMany({
+      where: { toUserId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        kind: true,
+        subject: true,
+        text: true,
+        requestId: true,
+        status: true,
+        createdAt: true,
+        readAt: true,
+      },
+    })
+    return { emails, unread: emails.filter((e) => !e.readAt).length }
+  })
+
+  app.post('/api/emails/:id/read', async (request) => {
+    const user = signedIn(request)
+    const { id } = IdParams.parse(request.params)
+    const { count } = await db.emailMessage.updateMany({
+      where: { id, toUserId: user.id, readAt: null },
+      data: { readAt: new Date() },
+    })
+    return { updated: count }
   })
 
   // --- Attachments ----------------------------------------------------------------------

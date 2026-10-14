@@ -9,7 +9,8 @@ export async function resetData(db: Db): Promise<void> {
   await db.$transaction([
     db.$executeRawUnsafe('ALTER TABLE audit_events DISABLE TRIGGER USER'),
     db.$executeRawUnsafe(
-      'TRUNCATE audit_events, ai_checks, decisions, attachments, purchase_requests, users ' +
+      'TRUNCATE audit_events, email_messages, ai_checks, decisions, attachments, ' +
+        'purchase_requests, users ' +
         'RESTART IDENTITY CASCADE',
     ),
     db.$executeRawUnsafe('ALTER TABLE audit_events ENABLE TRIGGER USER'),

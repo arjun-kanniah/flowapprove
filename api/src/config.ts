@@ -24,6 +24,13 @@ const Env = z.object({
   QUOTE_CHECK_MODEL: z.string().default('anthropic/claude-haiku-5-5'),
   /** Checks each person may run in an hour (automatic checks on submit included). */
   QUOTE_CHECKS_PER_HOUR: z.coerce.number().int().positive().default(10),
+  /** The web app's address, for links in emails. */
+  APP_URL: z.string().url().default('http://localhost:5174'),
+  /** log: record and log emails without sending (local, demo); acs: Azure Communication Services. */
+  EMAIL_DELIVERY: z.enum(['log', 'acs']).default('log'),
+  /** Sender address (a verified Azure Communication Services domain) and the ACS endpoint. */
+  EMAIL_FROM: z.string().default('FlowApprove <noreply@example.com>'),
+  ACS_ENDPOINT: z.string().default(''),
   ANTHROPIC_API_KEY: z.string().default(''),
   OPENAI_API_KEY: z.string().default(''),
   GEMINI_API_KEY: z.string().default(''),
