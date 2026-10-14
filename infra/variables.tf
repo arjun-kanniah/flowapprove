@@ -68,8 +68,14 @@ variable "budget_start" {
   default     = "2026-10-01"
 }
 
-variable "app_url" {
-  description = "Public address of the app, for links in emails. Empty uses the Container Apps address."
+variable "zone" {
+  description = "Cloudflare zone (domain) the app's hostname is in."
   type        = string
-  default     = ""
+  default     = "arjunkanniah.dev"
+}
+
+variable "hostname" {
+  description = "Custom domain for the app. Empty serves it on its Container Apps address only."
+  type        = string
+  default     = "flowapprove.arjunkanniah.dev"
 }

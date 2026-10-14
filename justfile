@@ -91,7 +91,22 @@ infra *args:
     #!/usr/bin/env bash
     set -euo pipefail
     export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+    # The Cloudflare token for DNS lives in Google Secret Manager with DocPilot's, which manages
+    # the same zone; it's read for this run only, never written anywhere
+    export CLOUDFLARE_API_TOKEN=$(CLOUDSDK_ACTIVE_CONFIG_NAME=docpilot \
+        gcloud secrets versions access latest --secret=cloudflare-api-token)
     cd infra && terraform {{args}}
+
+# Bind the managed certificate to the custom domain (once, after the apply that creates them)
+bind-domain:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd infra
+    host=$(terraform output -raw url | sed 's|https://||')
+    cert=$(terraform output -raw managed_certificate_id)
+    az containerapp hostname bind --resource-group rg-flowapprove --name ca-flowapprove \
+        --hostname "$host" --certificate "$cert" --output none
+    echo "Bound https://$host"
 
 # Store an app secret in Key Vault from a hidden prompt (database-url, anthropic-api-key, ...)
 secret name:

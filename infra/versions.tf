@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.9.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.27.0"
+    }
   }
 
   # State lives in a storage account created by `just infra-bootstrap`, reached with your
@@ -27,3 +31,6 @@ provider "azurerm" {
   # Storage accounts here have shared keys turned off, so data-plane calls use Entra ID
   storage_use_azuread = true
 }
+
+# Reads CLOUDFLARE_API_TOKEN, which `just infra` loads (see the justfile).
+provider "cloudflare" {}

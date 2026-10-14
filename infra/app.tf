@@ -1,7 +1,7 @@
 locals {
   app_name = "ca-${var.name}"
   app_fqdn = "${local.app_name}.${azurerm_container_app_environment.main.default_domain}"
-  app_url  = var.app_url != "" ? var.app_url : "https://${local.app_fqdn}"
+  app_url  = var.hostname != "" ? "https://${var.hostname}" : "https://${local.app_fqdn}"
 
   # Settings shared by the app and the nightly reset job
   app_env = {

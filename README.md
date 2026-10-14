@@ -4,7 +4,7 @@ Purchase-request approvals: a requester submits a request with a vendor quote, i
 manager and, above a threshold, to finance; everyone sees changes live, gets email, and every
 action lands in an append-only audit log. An AI check compares the quote with the request.
 
-**[Live demo](https://ca-flowapprove.proudmoss-4839f83c.eastus2.azurecontainerapps.io)**: pick a persona and try both sides of a request (sample data, reset nightly).
+**[Live demo](https://flowapprove.arjunkanniah.dev)**: pick a persona and try both sides of a request (sample data, reset nightly).
 
 **Status: in development.** Working locally: sign-in as demo personas, raising and editing
 requests, PDF quotes, the full approval path with separation of duties, live updates and the

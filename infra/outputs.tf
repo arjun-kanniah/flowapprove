@@ -21,3 +21,8 @@ output "github_variables" {
     PUBLIC_URL            = local.app_url
   }
 }
+
+output "managed_certificate_id" {
+  description = "For `just bind-domain`: the certificate to bind to the hostname."
+  value       = one(azurerm_container_app_environment_managed_certificate.app[*].id)
+}
