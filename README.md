@@ -138,6 +138,24 @@ flowchart LR
 
 ## Quick start
 
+**Option A: dev container (nothing to install but Docker + VS Code).** Open the folder in
+VS Code and choose *Reopen in Container*. The first build installs the tools and dependencies
+(a few minutes). Then, in VS Code's terminal, which runs inside the container:
+
+```bash
+cp .env.example .env  # optional: add a model key to switch on the AI quote check
+just seed             # start Postgres 18, apply migrations, load the demo personas
+just dev-api          # terminal 1: API
+just dev-web          # terminal 2: web app, open http://localhost:5174
+```
+
+VS Code forwards the ports to your browser. Postgres runs in Docker beside the container, not
+inside it, so its data survives a rebuild; the container reaches it through
+`host.docker.internal`, which overrides the database URL in `.env`. Use your own machine's
+terminal for `just infra` and other Azure work: your cloud logins aren't in the container.
+
+**Option B: local.**
+
 ```bash
 mise install          # node, just, terraform at pinned versions
 cp .env.example .env  # add a model key to switch on the AI quote check

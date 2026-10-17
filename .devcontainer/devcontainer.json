@@ -1,0 +1,29 @@
+{
+  "name": "FlowApprove",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  // `just db` starts Postgres on the host's Docker, so inside this container it isn't on
+  // localhost: reach it through the host instead. This overrides the URL in .env.
+  "runArgs": ["--add-host=host.docker.internal:host-gateway"],
+  "containerEnv": {
+    "DATABASE_URL": "postgresql://flowapprove:flowapprove@host.docker.internal:5433/flowapprove"
+  },
+  "postCreateCommand": "curl -fsSL https://mise.run | sh && ~/.local/bin/mise trust && ~/.local/bin/mise install && echo 'eval \"$(~/.local/bin/mise activate bash)\"' >> ~/.bashrc && ~/.local/bin/mise exec -- just setup",
+  "forwardPorts": [5174, 8080],
+  "portsAttributes": {
+    "5174": { "label": "Web" },
+    "8080": { "label": "API" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "oxc.oxc-vscode",
+        "prisma.prisma",
+        "skellock.just",
+        "editorconfig.editorconfig"
+      ]
+    }
+  }
+}
